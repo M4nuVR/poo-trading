@@ -1,0 +1,108 @@
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: Arial, Helvetica, sans-serif;
+    background: #f4f5f7;
+    color: #1f2937;
+}
+
+header {
+    padding: 20px 32px;
+    background: #111827;
+    color: #ffffff;
+}
+
+header h1 {
+    margin: 0 0 4px;
+    font-size: 22px;
+}
+
+header p {
+    margin: 0;
+    font-size: 13px;
+    color: #9ca3af;
+}
+
+main {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 16px;
+    padding: 24px 32px;
+}
+
+.panel {
+    background: #ffffff;
+    border-radius: 8px;
+    padding: 16px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.panel:last-child {
+    grid-column: 1 / -1;
+}
+
+h2 {
+    margin-top: 0;
+    font-size: 16px;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+
+th, td {
+    padding: 8px;
+    text-align: left;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+tbody tr {
+    cursor: pointer;
+}
+
+tbody tr:hover {
+    background: #f9fafb;
+}
+
+.estado {
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 12px;
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.estado.ALERTA_EMITIDA {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.lista {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    max-height: 300px;
+    overflow-y: auto;
+    font-size: 14px;
+}
+
+.lista li {
+    padding: 6px 0;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.vacio {
+    color: #9ca3af;
+}
+
+@media (max-width: 800px) {
+    main {
+        grid-template-columns: 1fr;
+        padding: 16px;
+    }
+}

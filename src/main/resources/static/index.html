@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>POO Trading</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <h1>Plataforma de Trading y Alertas</h1>
+        <p>Datos simulados con fines educativos. No es asesoria de inversion.</p>
+    </header>
+
+    <main>
+        <section class="panel">
+            <h2>Precios</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Codigo</th>
+                        <th>Nombre</th>
+                        <th>Tipo</th>
+                        <th>Precio</th>
+                        <th>Estado</th>
+                    </tr>
+                </thead>
+                <tbody id="tabla-activos"></tbody>
+            </table>
+        </section>
+
+        <section class="panel">
+            <h2>Historial <span id="activo-seleccionado"></span></h2>
+            <ul id="lista-historial" class="lista"></ul>
+        </section>
+
+        <section class="panel">
+            <h2>Alertas</h2>
+            <ul id="lista-senales" class="lista"></ul>
+        </section>
+    </main>
+
+    <script src="app.js"></script>
+</body>
+</html>
