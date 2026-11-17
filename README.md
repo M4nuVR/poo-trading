@@ -1,6 +1,6 @@
 # Plataforma de Trading y Alertas de Inversión
 
-> **Proyecto académico en desarrollo** · Java · Spring Boot · Programación Orientada a Objetos
+> **Proyecto académico** · Java · Spring Boot · Programación Orientada a Objetos
 
 Plataforma educativa para **simular cotizaciones de activos financieros**, calcular indicadores técnicos y generar alertas cuando se cumplan reglas de negocio configuradas. El proyecto está enfocado en aplicar los **cuatro pilares de la Programación Orientada a Objetos (POO)**, los principios **SOLID**, patrones de diseño y pruebas automatizadas.
 
@@ -50,7 +50,8 @@ No es necesario utilizar Kafka, RabbitMQ, Docker, Kubernetes ni microservicios. 
 - **Strategy:** intercambiar algoritmos de indicadores técnicos.
 - **State:** gestionar los estados del seguimiento y evitar alertas repetidas.
 - **Repository:** desacoplar la lógica de dominio del almacenamiento.
-- **Inyección de dependencias:** suministrar implementaciones a los servicios mediante constructores.
+
+Además se usa **inyección de dependencias por constructor** para entregar las implementaciones a los servicios.
 
 ## Arquitectura
 
@@ -82,8 +83,8 @@ flowchart TD
 | `IndicadorTecnico` | Contrato de cálculo de indicadores |
 | `MediaMovilSimple`, `MediaMovilExponencial` | Estrategias de indicadores |
 | `ReglaDeAlerta` | Contrato de las condiciones para emitir señales |
-| `ReglaDeAlertaPorMomentum` | Evaluación del umbral de momentum |
-| `EstadoSeguimiento` | Comportamiento del seguimiento según su estado |
+| `ReglaPrecioSobreMedia` | Evalúa si el precio supera la media en un porcentaje |
+| `EstadoSeguimiento`, `Vigilando`, `AlertaEmitida` | Comportamiento del seguimiento según su estado |
 | `SenalInversion` | Resultado de una regla y estado de notificación |
 | `ProveedorPrecios` | Contrato para obtener cotizaciones |
 | `Notificador` | Contrato para informar una señal |
@@ -98,34 +99,40 @@ flowchart LR
     C --> D[Indicador técnico]
     D --> E[Regla de alerta]
     E --> F{¿Generar señal?}
-    F -- Sí --> G[Guardar señal]
-    G --> H[Notificar]
+    F -- Sí --> G[Notificar]
+    G --> H[Guardar señal]
     F -- No --> I[Continuar seguimiento]
 ```
 
-**Ejemplo de regla inicial:** si el precio actual supera en más del **5 %** la media móvil simple de las últimas cinco cotizaciones, se puede generar una señal educativa.
+**Regla inicial:** si el precio actual supera en más del **5 %** la media móvil simple de las **cinco cotizaciones anteriores** (sin incluir la actual), se genera una señal educativa.
 
-\[
+```math
 SMA_5 = \frac{P_1 + P_2 + P_3 + P_4 + P_5}{5}
-\]
+```
 
-\[
+```math
 PrecioActual > SMA_5 \times 1.05
-\]
+```
 
-La señal no debe repetirse continuamente mientras se mantenga la condición; el seguimiento volverá a estar habilitado cuando la condición desaparezca.
+La señal no se repite mientras se mantenga la condición. Para eso se usa el patrón State:
 
-## Organización propuesta del repositorio
+```mermaid
+stateDiagram-v2
+    [*] --> Vigilando
+    Vigilando --> AlertaEmitida: se cumple la regla (emite señal)
+    AlertaEmitida --> AlertaEmitida: se sigue cumpliendo (no emite)
+    AlertaEmitida --> Vigilando: deja de cumplirse
+```
 
-> La siguiente estructura representa la **organización objetivo**. Puede cambiar durante la implementación.
+## Organización del repositorio
 
 ```text
-trading-alertas-poo/
+poo-trading/
 ├── pom.xml
 ├── README.md
 ├── src/
 │   ├── main/
-│   │   ├── java/com/ejemplo/trading/
+│   │   ├── java/com/m4nuvr/trading/
 │   │   │   ├── domain/
 │   │   │   │   ├── model/
 │   │   │   │   ├── strategy/
@@ -136,28 +143,29 @@ trading-alertas-poo/
 │   │   │   ├── infrastructure/
 │   │   │   │   ├── simulation/
 │   │   │   │   ├── persistence/
-│   │   │   │   └── notification/
+│   │   │   │   ├── notification/
+│   │   │   │   └── config/
 │   │   │   ├── web/
 │   │   │   └── TradingApplication.java
 │   │   └── resources/
 │   │       ├── application.properties
 │   │       └── static/
-│   └── test/java/
+│   └── test/java/com/m4nuvr/trading/
 ```
 
 ## Requisitos para ejecutar el proyecto
 
 - **JDK 17 o superior** instalado y configurado.
-- **Maven** disponible, o Maven Wrapper (`mvnw`) si se incluye en el repositorio.
+- **Maven** instalado.
 - Una terminal y un IDE compatible con Java (opcional).
 
-### Puesta en marcha (cuando esté implementado)
+### Puesta en marcha
 
 1. Clona el repositorio:
 
    ```bash
-   git clone <URL_DEL_REPOSITORIO>
-   cd <NOMBRE_DEL_REPOSITORIO>
+   git clone https://github.com/M4nuVR/poo-trading.git
+   cd poo-trading
    ```
 
 2. Comprueba Java y Maven:
@@ -179,15 +187,23 @@ trading-alertas-poo/
    mvn spring-boot:run
    ```
 
-5. Cuando exista el controlador web o la interfaz, consulta la ruta y el puerto definidos en `application.properties` (Spring Boot usa el puerto `8080` por defecto, salvo configuración distinta).
+5. Abre `http://localhost:8080` para ver el panel. Los precios se actualizan cada 3 segundos y las alertas también se imprimen en consola.
 
-> Los comandos de ejecución requieren que el código fuente y el archivo `pom.xml` ya estén presentes. Las rutas REST definitivas se documentarán a medida que se implementen; no se consideran disponibles todavía.
+### API REST
+
+| Método | Ruta | Descripción |
+| --- | --- | --- |
+| GET | `/api/activos` | Activos con su último precio y estado de seguimiento |
+| GET | `/api/activos/{codigo}/cotizaciones` | Últimas 30 cotizaciones de un activo |
+| GET | `/api/senales` | Últimas 20 señales generadas |
+
+La consola de H2 queda disponible en `/h2-console` (URL JDBC `jdbc:h2:mem:trading`, usuario `sa`).
 
 ## Pruebas
 
-Las pruebas unitarias tendrán prioridad sobre las pruebas de infraestructura y se escribirán con **JUnit 5** y **Mockito**.
+Las pruebas unitarias están escritas con **JUnit 5** y **Mockito** y se ejecutan con `mvn test`.
 
-Casos principales que se verificarán:
+Casos verificados:
 
 - Validación de precios positivos y códigos de activos correctos.
 - Cálculo de SMA y otros indicadores.
@@ -197,20 +213,31 @@ Casos principales que se verificarán:
 - Intercambio de estrategias por polimorfismo.
 - Colaboración entre servicios, repositorios y notificadores usando dobles de prueba.
 
-Las pruebas del dominio deben ejecutarse **sin iniciar Spring Boot ni una base de datos real**.
+Las pruebas del dominio se ejecutan **sin iniciar Spring Boot ni una base de datos real**.
+
+## Explicación del código
+
+1. `TareaSimulacion` llama cada 3 segundos a `ServicioMercado.actualizarMercado()`.
+2. El servicio pide una cotización nueva a `ProveedorPrecios` (implementado por `SimuladorPrecios`, que varía el precio hasta ±4 %) y la guarda en `RepositorioCotizaciones`.
+3. Cada activo tiene un `RastreadorActivo` que guarda su historial reciente y su estado (`Vigilando` o `AlertaEmitida`).
+4. El rastreador consulta la `ReglaDeAlerta`. La regla usa un `IndicadorTecnico` (SMA o EMA) sin saber cuál es: eso es Strategy y polimorfismo.
+5. Si la regla se cumple y el estado lo permite, se crea una `SenalInversion`, se envía al `Notificador` (consola) y se guarda en `RepositorioSenales`.
+6. El dominio solo conoce interfaces (`domain/port`). La infraestructura (JPA, simulador, consola) las implementa, y `ConfiguracionTrading` arma todo. Para cambiar a EMA basta con devolver `new MediaMovilExponencial(5)` en esa clase.
+7. `MercadoController` expone la API y la página en `static/` la consulta para mostrar los paneles.
 
 ## Plan de desarrollo
 
-- [ ] Definir el modelo de dominio y el diagrama de clases UML.
-- [ ] Implementar objetos de valor y entidades con validaciones.
-- [ ] Implementar la simulación y el registro de cotizaciones.
-- [ ] Incorporar Strategy para el cálculo de SMA y EMA.
-- [ ] Implementar reglas de alertas y estados del seguimiento.
-- [ ] Crear repositorios y persistencia con JPA.
-- [ ] Implementar notificaciones mediante interfaces.
-- [ ] Exponer consultas mediante API REST.
-- [ ] Crear los paneles de mercado y alertas.
-- [ ] Completar las pruebas unitarias y documentación técnica.
+- [x] Definir el modelo de dominio.
+- [ ] Diagrama de clases UML.
+- [x] Implementar objetos de valor y entidades con validaciones.
+- [x] Implementar la simulación y el registro de cotizaciones.
+- [x] Incorporar Strategy para el cálculo de SMA y EMA.
+- [x] Implementar reglas de alertas y estados del seguimiento.
+- [x] Crear repositorios y persistencia con JPA.
+- [x] Implementar notificaciones mediante interfaces.
+- [x] Exponer consultas mediante API REST.
+- [x] Crear los paneles de mercado y alertas.
+- [x] Pruebas unitarias y documentación técnica.
 
 ## Alcance
 
