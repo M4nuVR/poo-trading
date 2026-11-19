@@ -72,7 +72,7 @@ flowchart TD
 - **Infraestructura:** implementa el simulador de precios, los repositorios y los canales de notificación.
 - **Presentación:** ofrece endpoints REST y recursos web para consultar los resultados.
 
-### Modelo de dominio previsto
+### Modelo de dominio
 
 | Clase / interfaz | Responsabilidad |
 | --- | --- |
@@ -89,6 +89,160 @@ flowchart TD
 | `ProveedorPrecios` | Contrato para obtener cotizaciones |
 | `Notificador` | Contrato para informar una señal |
 | `RepositorioCotizaciones`, `RepositorioSenales` | Contratos de persistencia |
+
+### Diagrama de clases UML
+
+Las tres vistas describen el mismo modelo Java. Una flecha continua indica una asociación, una flecha discontinua indica una dependencia y una línea discontinua con triángulo indica que una clase implementa una interfaz. El rombo sólido identifica una relación de composición.
+
+#### 1. Modelo de dominio
+
+Cada rastreador sigue un activo y conserva hasta 50 precios en memoria. Al registrar una cotización, verifica que el código coincida con el del activo, evalúa la regla con los precios anteriores y después incorpora el precio actual al historial. El repositorio guarda la cotización completa.
+
+```mermaid
+classDiagram
+    direction TB
+    class RastreadorActivo {
+        -List~Double~ historial
+        +registrarCotizacion(Cotizacion cotizacion, ReglaDeAlerta regla) Optional~SenalInversion~
+        +getUltimoPrecio() Optional~Double~
+        +getEstado() String
+    }
+    class ActivoFinanciero {
+        -String nombre
+        +getCodigo() CodigoActivo
+        +getTipo() TipoActivo
+        +getPrecioInicial() Precio
+    }
+    class Cotizacion {
+        <<record>>
+        +codigo() CodigoActivo
+        +precio() Precio
+        +fecha() LocalDateTime
+    }
+    class SenalInversion {
+        -String mensaje
+        -LocalDateTime fecha
+        -boolean notificada
+        +marcarNotificada() void
+    }
+    class CodigoActivo {
+        <<record>>
+        +valor() String
+    }
+    class Precio {
+        <<record>>
+        +valor() double
+        +esMayorQue(double otro) boolean
+    }
+    class TipoActivo {
+        <<enumeration>>
+        CRIPTOMONEDA
+        DIVISA
+        ACCION
+    }
+    RastreadorActivo --> "1" ActivoFinanciero : sigue
+    RastreadorActivo ..> Cotizacion : recibe
+    RastreadorActivo ..> SenalInversion : crea si corresponde
+    ActivoFinanciero --> "1" CodigoActivo : código
+    ActivoFinanciero --> "1" Precio : precio inicial
+    ActivoFinanciero --> "1" TipoActivo : tipo
+    Cotizacion --> "1" CodigoActivo : código
+    Cotizacion --> "1" Precio : precio observado
+    SenalInversion --> "1" CodigoActivo : código
+    SenalInversion --> "1" Precio : precio de la señal
+```
+
+#### 2. Reglas, indicadores y estados
+
+La regla delega el cálculo de la media en un `IndicadorTecnico` (**Strategy**). El rastreador conserva un `EstadoSeguimiento` entre cotizaciones (**State**). Para emitir una señal deben cumplirse dos condiciones: la regla debe detectar que el precio supera el umbral y el estado debe permitir la emisión.
+
+```mermaid
+classDiagram
+    direction TB
+    class ReglaDeAlerta {
+        <<interface>>
+        +seCumple(List~Double~ preciosAnteriores, double precioActual) boolean
+        +describir(double precioActual) String
+    }
+    class ReglaPrecioSobreMedia {
+        -double porcentaje
+    }
+    class IndicadorTecnico {
+        <<interface>>
+        +nombre() String
+        +calcular(List~Double~ precios) OptionalDouble
+    }
+    class MediaMovilSimple {
+        -int periodo
+    }
+    class MediaMovilExponencial {
+        -int periodo
+    }
+    class EstadoSeguimiento {
+        <<interface>>
+        +nombre() String
+        +permiteAlerta() boolean
+        +siguiente(boolean condicionCumplida) EstadoSeguimiento
+    }
+    RastreadorActivo ..> ReglaDeAlerta : evalúa
+    RastreadorActivo --> "1" EstadoSeguimiento : mantiene
+    ReglaPrecioSobreMedia ..|> ReglaDeAlerta
+    ReglaPrecioSobreMedia --> "1" IndicadorTecnico : utiliza
+    MediaMovilSimple ..|> IndicadorTecnico
+    MediaMovilExponencial ..|> IndicadorTecnico
+    Vigilando ..|> EstadoSeguimiento
+    AlertaEmitida ..|> EstadoSeguimiento
+```
+
+#### 3. Servicio de mercado, puertos y adaptadores
+
+`TareaSimulacion` dispara la actualización y `MercadoController` atiende las consultas. Ambos utilizan `ServicioMercado`, que crea un rastreador por código de activo. El servicio depende de interfaces para obtener precios, guardar cotizaciones, notificar y guardar señales. Los adaptadores JPA delegan el acceso a datos en los repositorios de Spring Data.
+
+```mermaid
+classDiagram
+    direction TB
+    class ServicioMercado {
+        +actualizarMercado() void
+        +resumen() List~ResumenActivo~
+        +historial(String codigo) List~Cotizacion~
+        +senales() List~SenalInversion~
+    }
+    class ReglaDeAlerta {
+        <<interface>>
+    }
+    class ProveedorPrecios {
+        <<interface>>
+        +obtenerCotizacion(ActivoFinanciero activo) Cotizacion
+    }
+    class Notificador {
+        <<interface>>
+        +notificar(SenalInversion senal) void
+    }
+    class RepositorioCotizaciones {
+        <<interface>>
+        +guardar(Cotizacion cotizacion) void
+        +buscarUltimas(CodigoActivo codigo, int cantidad) List~Cotizacion~
+    }
+    class RepositorioSenales {
+        <<interface>>
+        +guardar(SenalInversion senal) void
+        +listarRecientes() List~SenalInversion~
+    }
+    TareaSimulacion --> ServicioMercado : actualiza
+    MercadoController --> ServicioMercado : consulta
+    ServicioMercado "1" *-- "0..*" RastreadorActivo : crea y conserva
+    ServicioMercado --> ReglaDeAlerta : entrega al rastreador
+    ServicioMercado --> ProveedorPrecios : solicita cotizaciones
+    ServicioMercado --> Notificador : comunica señales
+    ServicioMercado --> RepositorioCotizaciones : guarda y consulta
+    ServicioMercado --> RepositorioSenales : guarda y consulta
+    SimuladorPrecios ..|> ProveedorPrecios
+    NotificadorConsola ..|> Notificador
+    RepositorioCotizacionesJpa ..|> RepositorioCotizaciones
+    RepositorioSenalesJpa ..|> RepositorioSenales
+    RepositorioCotizacionesJpa --> CotizacionJpaRepository : delega
+    RepositorioSenalesJpa --> SenalJpaRepository : delega
+```
 
 ## Flujo principal
 
@@ -228,7 +382,7 @@ Las pruebas del dominio se ejecutan **sin iniciar Spring Boot ni una base de dat
 ## Plan de desarrollo
 
 - [x] Definir el modelo de dominio.
-- [ ] Diagrama de clases UML.
+- [x] Diagrama de clases UML.
 - [x] Implementar objetos de valor y entidades con validaciones.
 - [x] Implementar la simulación y el registro de cotizaciones.
 - [x] Incorporar Strategy para el cálculo de SMA y EMA.
