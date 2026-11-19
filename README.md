@@ -22,6 +22,31 @@ Diseñar e implementar una aplicación modular que permita estudiar la colaborac
 - **Notificaciones:** mensajes en consola y posibilidad de incorporar otros canales.
 - **Visualización:** panel de precios y panel de alertas mediante una interfaz web sencilla.
 
+## Casos de uso
+
+El usuario de la plataforma educativa abre el panel para consultar la información del mercado simulado. La aplicación debe estar en ejecución y el acceso al panel es libre.
+
+```mermaid
+flowchart LR
+    Usuario["«actor» Usuario de la plataforma educativa"]
+    subgraph Plataforma["Plataforma educativa de trading"]
+        CU01(["CU-01 · Consultar precios y estados"])
+        CU02(["CU-02 · Consultar el historial de un activo"])
+        CU03(["CU-03 · Consultar alertas recientes"])
+    end
+    Usuario --- CU01
+    Usuario --- CU02
+    Usuario --- CU03
+```
+
+| Caso de uso | Acción del usuario | Respuesta del panel | Endpoint |
+| --- | --- | --- | --- |
+| CU-01 | Abre la tabla **Precios**. | Muestra el código, el nombre, el tipo, el último precio y el estado de cada activo. Se actualiza cada tres segundos. | `GET /api/activos` |
+| CU-02 | Selecciona la fila de un activo. | Muestra la hora y el precio de hasta 30 cotizaciones. Al abrir el panel, se selecciona el primer activo disponible. | `GET /api/activos/{codigo}/cotizaciones` |
+| CU-03 | Revisa la sección **Alertas**. | Muestra hasta 20 señales recientes con su hora, código de activo y mensaje. Si la lista está vacía, indica «Sin alertas por ahora». | `GET /api/senales` |
+
+La simulación genera las alertas automáticamente, incluso cuando el panel está cerrado. CU-03 permite consultar esas señales después de su emisión.
+
 ## Tecnologías
 
 | Área | Tecnología |
