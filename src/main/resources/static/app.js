@@ -62,7 +62,7 @@ async function cargarSenales() {
     }
     senales.forEach(senal => {
         const item = document.createElement("li");
-        item.textContent = `${formatearHora(senal.fecha)}  ${senal.codigo}: ${senal.mensaje}`;
+        item.textContent = `${formatearHora(senal.fecha)}  ${senal.tipo} ${senal.codigo}: ${senal.mensaje}`;
         lista.appendChild(item);
     });
 }

@@ -4,6 +4,7 @@ import com.m4nuvr.trading.domain.strategy.IndicadorTecnico;
 
 import java.util.List;
 import java.util.OptionalDouble;
+import com.m4nuvr.trading.domain.model.TipoSenal;
 
 public class ReglaPrecioSobreMedia implements ReglaDeAlerta {
 
@@ -31,6 +32,16 @@ public class ReglaPrecioSobreMedia implements ReglaDeAlerta {
             return NivelMomentum.SOBRE_UMBRAL;
         }
         return NivelMomentum.ALTO;
+    }
+
+    @Override
+    public TipoSenal tipo() {
+        return TipoSenal.COMPRA;
+    }
+
+    @Override
+    public String motivo() {
+        return "Momentum Crossover";
     }
 
     @Override

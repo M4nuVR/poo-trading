@@ -33,7 +33,8 @@ public class RastreadorActivo {
 
         SenalInversion senal = null;
         if (estado.disparaAlertaDesde(anterior)) {
-            senal = new SenalInversion(activo.getCodigo(), cotizacion.precio(), regla.describir(precioActual), cotizacion.fecha());
+            senal = new SenalInversion(activo.getCodigo(), regla.tipo(), cotizacion.precio(),
+                    regla.motivo(), regla.describir(precioActual), cotizacion.fecha());
         }
         agregarAlHistorial(precioActual);
         return Optional.ofNullable(senal);

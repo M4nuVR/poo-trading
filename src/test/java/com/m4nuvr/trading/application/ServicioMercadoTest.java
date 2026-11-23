@@ -5,6 +5,7 @@ import com.m4nuvr.trading.domain.model.CodigoActivo;
 import com.m4nuvr.trading.domain.model.Cotizacion;
 import com.m4nuvr.trading.domain.model.Precio;
 import com.m4nuvr.trading.domain.model.SenalInversion;
+import com.m4nuvr.trading.domain.model.TipoSenal;
 import com.m4nuvr.trading.domain.model.TipoActivo;
 import com.m4nuvr.trading.domain.port.Notificador;
 import com.m4nuvr.trading.domain.port.ProveedorPrecios;
@@ -53,6 +54,8 @@ class ServicioMercadoTest {
         when(proveedor.obtenerCotizacion(activo))
                 .thenReturn(new Cotizacion(activo.getCodigo(), new Precio(200), LocalDateTime.now()));
         when(regla.describir(anyDouble())).thenReturn("alerta de prueba");
+        when(regla.tipo()).thenReturn(TipoSenal.COMPRA);
+        when(regla.motivo()).thenReturn("Momentum Crossover");
     }
 
     @Test
