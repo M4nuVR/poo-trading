@@ -10,6 +10,7 @@ import com.m4nuvr.trading.domain.port.Notificador;
 import com.m4nuvr.trading.domain.port.ProveedorPrecios;
 import com.m4nuvr.trading.domain.port.RepositorioCotizaciones;
 import com.m4nuvr.trading.domain.port.RepositorioSenales;
+import com.m4nuvr.trading.domain.rules.NivelMomentum;
 import com.m4nuvr.trading.domain.rules.ReglaDeAlerta;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -56,7 +57,7 @@ class ServicioMercadoTest {
 
     @Test
     void guardaLaCotizacionYNotificaCuandoSeCumpleLaRegla() {
-        when(regla.seCumple(anyList(), anyDouble())).thenReturn(true);
+        when(regla.evaluar(anyList(), anyDouble())).thenReturn(NivelMomentum.SOBRE_UMBRAL);
 
         servicio.actualizarMercado();
 
@@ -67,7 +68,7 @@ class ServicioMercadoTest {
 
     @Test
     void noNotificaCuandoLaReglaNoSeCumple() {
-        when(regla.seCumple(anyList(), anyDouble())).thenReturn(false);
+        when(regla.evaluar(anyList(), anyDouble())).thenReturn(NivelMomentum.NORMAL);
 
         servicio.actualizarMercado();
 
@@ -78,14 +79,14 @@ class ServicioMercadoTest {
 
     @Test
     void elResumenMuestraElUltimoPrecio() {
-        when(regla.seCumple(anyList(), anyDouble())).thenReturn(false);
+        when(regla.evaluar(anyList(), anyDouble())).thenReturn(NivelMomentum.NORMAL);
 
         servicio.actualizarMercado();
 
         ResumenActivo resumen = servicio.resumen().get(0);
         assertEquals("AAPL", resumen.codigo());
         assertEquals(200.0, resumen.ultimoPrecio().doubleValue(), 0.0001);
-        assertEquals("VIGILANDO", resumen.estado());
+        assertEquals("NORMAL", resumen.estado());
     }
 
     @Test
