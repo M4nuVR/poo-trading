@@ -97,6 +97,23 @@ flowchart TD
 - **Infraestructura:** implementa el simulador de precios, los repositorios y los canales de notificación.
 - **Presentación:** ofrece endpoints REST y recursos web para consultar los resultados.
 
+### Diagrama de componentes
+
+Las flechas continuas muestran llamadas o dependencias de uso. Las discontinuas unen cada adaptador con el puerto que implementa. El panel consulta la API; la tarea programada inicia la simulación. Ambos recorridos pasan por `ServicioMercado`. `ConfiguracionTrading` selecciona los activos, el indicador y la regla e inyecta las dependencias del servicio.
+
+```mermaid
+flowchart TD
+    UI["Panel web"] -->|HTTP GET| API["MercadoController"]
+    API -->|consulta| S["ServicioMercado"]
+    T["TareaSimulacion"] -->|actualiza| S
+    S --> D["RastreadorActivo · regla, indicador y estado"]
+    S --> P["Puertos del dominio"]
+    SIM["SimuladorPrecios"] -. ProveedorPrecios .-> P
+    JPA["Adaptadores JPA"] -. Repositorios de cotizaciones y señales .-> P
+    N["NotificadorConsola"] -. Notificador .-> P
+    JPA -->|Spring Data JPA| DB[("H2 en memoria")]
+```
+
 ### Modelo de dominio
 
 | Clase / interfaz | Responsabilidad |
@@ -281,6 +298,39 @@ flowchart LR
     F -- Sí --> G[Notificar]
     G --> H[Guardar señal]
     F -- No --> I[Continuar seguimiento]
+```
+
+### Diagrama de secuencia
+
+La secuencia muestra una actualización programada. La línea **Adaptadores** agrupa cuatro implementaciones: el simulador entrega el precio, el repositorio de cotizaciones lo guarda, el notificador comunica la señal y el repositorio de señales la persiste. Si el rastreador devuelve un `Optional` vacío, el servicio continúa con el siguiente activo.
+
+```mermaid
+sequenceDiagram
+    participant T as TareaSimulacion
+    participant S as ServicioMercado
+    participant A as Adaptadores
+    participant R as RastreadorActivo
+    participant G as ReglaDeAlerta
+    T->>S: actualizarMercado()
+    loop Por cada activo
+        S->>A: obtenerCotizacion(activo)
+        A-->>S: cotización simulada
+        S->>A: guardar(cotización)
+        S->>R: registrarCotizacion(cotización, regla)
+        R->>R: Validar código del activo
+        R->>G: seCumple(historial previo, precio)
+        G-->>R: condición cumplida o falsa
+        opt Condición cumplida y estado permite alerta
+            R->>R: Crear SenalInversion
+        end
+        R->>R: Actualizar estado y añadir precio
+        R-->>S: Optional con señal o vacío
+        opt Hay señal
+            S->>A: notificar(señal)
+            S->>S: Marcar la señal como notificada
+            S->>A: guardar(señal)
+        end
+    end
 ```
 
 **Regla inicial:** si el precio actual supera en más del **5 %** la media móvil simple de las **cinco cotizaciones anteriores** (sin incluir la actual), se genera una señal educativa.
