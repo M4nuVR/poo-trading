@@ -9,6 +9,7 @@ public class NotificadorConsola implements Notificador {
 
     @Override
     public void notificar(SenalInversion senal) {
-        System.out.println("[ALERTA] " + senal.getCodigo() + " - " + senal.getMensaje());
+        System.out.println("*** ALERTA DE SISTEMA: SENAL DE " + senal.getTipo() + " EN " + senal.getCodigo() + " ***");
+        System.out.println("    " + senal.getMensaje() + " | " + senal.aPayload());
     }
 }

@@ -77,7 +77,12 @@ tbody tr:hover {
     color: #065f46;
 }
 
-.estado.ALERTA_EMITIDA {
+.estado.MOMENTUM_ALTO {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.estado.ALERTA_DISPARADA {
     background: #fee2e2;
     color: #991b1b;
 }

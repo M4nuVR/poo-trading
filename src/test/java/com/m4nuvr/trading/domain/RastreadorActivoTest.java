@@ -42,7 +42,7 @@ class RastreadorActivoTest {
     @Test
     void generaSenalYCambiaDeEstado() {
         assertTrue(registrar(110).isPresent());
-        assertEquals("ALERTA_EMITIDA", rastreador.getEstado());
+        assertEquals("ALERTA_DISPARADA", rastreador.getEstado());
     }
 
     @Test
@@ -52,10 +52,28 @@ class RastreadorActivoTest {
     }
 
     @Test
-    void vuelveAVigilarCuandoLaCondicionDesaparece() {
+    void vuelveANormalCuandoLaCondicionDesaparece() {
         registrar(110);
         registrar(100);
-        assertEquals("VIGILANDO", rastreador.getEstado());
+        assertEquals("NORMAL", rastreador.getEstado());
+    }
+
+    @Test
+    void pasaAMomentumAltoSinEmitirSenal() {
+        Optional<SenalInversion> senal = registrar(103);
+
+        assertTrue(senal.isEmpty());
+        assertEquals("MOMENTUM_ALTO", rastreador.getEstado());
+    }
+
+    @Test
+    void desdeMomentumAltoEmiteAlSuperarElUmbral() {
+        registrar(103);
+
+        Optional<SenalInversion> senal = registrar(110);
+
+        assertTrue(senal.isPresent());
+        assertEquals("ALERTA_DISPARADA", rastreador.getEstado());
     }
 
     @Test
@@ -63,4 +81,4 @@ class RastreadorActivoTest {
         Cotizacion otra = new Cotizacion(new CodigoActivo("ETH"), new Precio(10), LocalDateTime.now());
         assertThrows(IllegalArgumentException.class, () -> rastreador.registrarCotizacion(otra, regla));
     }
-}
+} 

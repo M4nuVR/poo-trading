@@ -3,6 +3,8 @@ package com.m4nuvr.trading.domain.rules;
 import com.m4nuvr.trading.domain.strategy.IndicadorTecnico;
 
 import java.util.List;
+import java.util.OptionalDouble;
+import com.m4nuvr.trading.domain.model.TipoSenal;
 
 public class ReglaPrecioSobreMedia implements ReglaDeAlerta {
 
@@ -21,10 +23,25 @@ public class ReglaPrecioSobreMedia implements ReglaDeAlerta {
     }
 
     @Override
-    public boolean seCumple(List<Double> preciosAnteriores, double precioActual) {
-        return indicador.calcular(preciosAnteriores)
-                .stream()
-                .anyMatch(media -> precioActual > media * (1 + porcentaje / 100));
+    public NivelMomentum evaluar(List<Double> preciosAnteriores, double precioActual) {
+        OptionalDouble media = indicador.calcular(preciosAnteriores);
+        if (media.isEmpty() || precioActual <= media.getAsDouble()) {
+            return NivelMomentum.NORMAL;
+        }
+        if (precioActual > media.getAsDouble() * (1 + porcentaje / 100)) {
+            return NivelMomentum.SOBRE_UMBRAL;
+        }
+        return NivelMomentum.ALTO;
+    }
+
+    @Override
+    public TipoSenal tipo() {
+        return TipoSenal.COMPRA;
+    }
+
+    @Override
+    public String motivo() {
+        return "Momentum Crossover";
     }
 
     @Override

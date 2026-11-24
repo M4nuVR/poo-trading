@@ -1,8 +1,9 @@
 package com.m4nuvr.trading.domain.model;
 
+import com.m4nuvr.trading.domain.rules.NivelMomentum;
 import com.m4nuvr.trading.domain.rules.ReglaDeAlerta;
 import com.m4nuvr.trading.domain.state.EstadoSeguimiento;
-import com.m4nuvr.trading.domain.state.Vigilando;
+import com.m4nuvr.trading.domain.state.Normal;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -14,7 +15,7 @@ public class RastreadorActivo {
 
     private final ActivoFinanciero activo;
     private final List<Double> historial = new ArrayList<>();
-    private EstadoSeguimiento estado = new Vigilando();
+    private EstadoSeguimiento estado = new Normal();
 
     public RastreadorActivo(ActivoFinanciero activo) {
         this.activo = activo;
@@ -25,13 +26,16 @@ public class RastreadorActivo {
             throw new IllegalArgumentException("La cotizacion no pertenece a " + activo.getCodigo());
         }
         double precioActual = cotizacion.precio().valor();
-        boolean condicionCumplida = regla.seCumple(List.copyOf(historial), precioActual);
+        NivelMomentum nivel = regla.evaluar(List.copyOf(historial), precioActual);
+
+        EstadoSeguimiento anterior = estado;
+        estado = nivel.aplicarA(anterior);
 
         SenalInversion senal = null;
-        if (condicionCumplida && estado.permiteAlerta()) {
-            senal = new SenalInversion(activo.getCodigo(), cotizacion.precio(), regla.describir(precioActual), cotizacion.fecha());
+        if (estado.disparaAlertaDesde(anterior)) {
+            senal = new SenalInversion(activo.getCodigo(), regla.tipo(), cotizacion.precio(),
+                    regla.motivo(), regla.describir(precioActual), cotizacion.fecha());
         }
-        estado = estado.siguiente(condicionCumplida);
         agregarAlHistorial(precioActual);
         return Optional.ofNullable(senal);
     }
