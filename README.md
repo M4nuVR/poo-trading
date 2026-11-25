@@ -128,6 +128,7 @@ classDiagram
     direction TB
     class RastreadorActivo {
         -List~Double~ historial
+        +validarPertenencia(Cotizacion cotizacion) void
         +registrarCotizacion(Cotizacion cotizacion, ReglaDeAlerta regla) Optional~SenalInversion~
         +getUltimoPrecio() Optional~Double~
         +getEstado() String
@@ -340,7 +341,7 @@ poo-trading/
 
 ### Puesta en marcha
 
-1. Clona el repositorio:
+1. Si recibiste el ZIP, descomprímelo y abre una terminal en la carpeta `poo-trading` que contiene el archivo `pom.xml`. Para obtener la versión publicada en GitHub, usa estos comandos.
 
    ```bash
    git clone https://github.com/M4nuVR/poo-trading.git
@@ -394,10 +395,37 @@ Casos verificados:
 
 Las pruebas del dominio se ejecutan **sin iniciar Spring Boot ni una base de datos real**.
 
+### TDD aplicado al registro de cotizaciones
+
+Si el servicio pide el precio de AAPL y el proveedor responde con el de BTC, debe rechazar esa cotización antes de guardarla, incluso cuando ambos activos estén registrados. La rama `tdd/validacion-cotizaciones` del ZIP conserva el desarrollo de este cambio.
+
+| Etapa | Qué se comprobó | Resultado |
+| --- | --- | --- |
+| Base · `7eebce3` | Se ejecutaron las pruebas originales. | 19 aprobadas |
+| Rojo · `a20da65` | En `rechazaCotizacionDeOtroActivoAntesDeGuardarla`, JUnit confirmó la excepción esperada. Mockito detectó que el servicio ya había llamado a `guardar`. | 20 aprobadas, 1 fallida |
+| Verde · `bdd0e44` | El servicio comprobó el código del activo antes de guardar la cotización. | 21 aprobadas |
+| Refactorización · `73e7c1a` | Se reunió la comprobación en `RastreadorActivo.validarPertenencia`. El servicio y el registro directo del rastreador usan ese método. | 21 aprobadas |
+
+La segunda prueba nueva, `permiteReintentarLaAlertaSiFallaElGuardadoDeLaCotizacion`, protege el orden de las operaciones. Simula un fallo al guardar una cotización válida y comprueba que el último precio y el estado se conservan. Cuando el proveedor entrega la misma cotización en el siguiente intento y el guardado tiene éxito, se notifica y se guarda una sola señal.
+
+Desde la carpeta que contiene `pom.xml`, ejecuta el caso principal y después todas las pruebas.
+
+```bash
+mvn "-Dtest=ServicioMercadoTest#rechazaCotizacionDeOtroActivoAntesDeGuardarla" test
+mvn clean test
+```
+
+Para mostrar el fallo original, abre el commit rojo en una carpeta de trabajo independiente y ejecuta allí la misma prueba. En ese commit, el fallo esperado es `NoInteractionsWanted` sobre `repositorioCotizaciones`.
+
+```bash
+git worktree add --detach ../poo-trading-rojo a20da65
+mvn -f ../poo-trading-rojo/pom.xml "-Dtest=ServicioMercadoTest#rechazaCotizacionDeOtroActivoAntesDeGuardarla" test
+```
+
 ## Explicación del código
 
 1. `TareaSimulacion` llama cada 3 segundos a `ServicioMercado.actualizarMercado()`.
-2. El servicio pide una cotización nueva a `ProveedorPrecios` (implementado por `SimuladorPrecios`, que varía el precio hasta ±4 %) y la guarda en `RepositorioCotizaciones`.
+2. El servicio pide una cotización nueva a `ProveedorPrecios` (implementado por `SimuladorPrecios`, que varía el precio hasta ±4 %). El rastreador comprueba que pertenece al activo solicitado y el servicio la guarda en `RepositorioCotizaciones`.
 3. Cada activo tiene un `RastreadorActivo` que guarda su historial reciente y su estado (`Vigilando` o `AlertaEmitida`).
 4. El rastreador consulta la `ReglaDeAlerta`. La regla usa un `IndicadorTecnico` (SMA o EMA) sin saber cuál es: eso es Strategy y polimorfismo.
 5. Si la regla se cumple y el estado lo permite, se crea una `SenalInversion`, se envía al `Notificador` (consola) y se guarda en `RepositorioSenales`.
