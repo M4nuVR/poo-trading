@@ -58,7 +58,7 @@ La simulación genera las alertas automáticamente, incluso cuando el panel est�
 | Pruebas | JUnit 5 y Mockito |
 | Interfaz | HTML, CSS y JavaScript |
 
-No es necesario utilizar Kafka, RabbitMQ, Docker, Kubernetes ni microservicios. La aplicación se ejecuta como **un único proyecto Spring Boot**.
+La aplicación se ejecuta como **un único proyecto Spring Boot**. Docker Compose permite que el equipo use la misma configuración de Java, Maven y H2.
 
 ## Enfoque de Programación Orientada a Objetos
 
@@ -308,6 +308,8 @@ stateDiagram-v2
 
 ```text
 poo-trading/
+├── docker-compose.yml
+├── Dockerfile
 ├── pom.xml
 ├── README.md
 ├── src/
@@ -333,7 +335,45 @@ poo-trading/
 │   └── test/java/com/m4nuvr/trading/
 ```
 
-## Requisitos para ejecutar el proyecto
+## Ejecutar y actualizar con Docker Compose
+
+Necesitas Docker Desktop con contenedores Linux o Docker Engine en Linux con el complemento Compose v2. La primera compilación requiere internet para descargar las imágenes y las dependencias. Maven y Java 17 se ejecutan dentro de Docker.
+
+### Primer arranque
+
+Descomprime el ZIP y abre una terminal en la carpeta `poo-trading`, donde está `docker-compose.yml`. Desde esa carpeta, quien mantiene el repositorio puede publicar la rama incluida con `git push -u origin tdd/validacion-cotizaciones`. Una vez publicada, el equipo también puede obtener el proyecto con Git.
+
+```bash
+git clone --branch tdd/validacion-cotizaciones https://github.com/M4nuVR/poo-trading.git
+cd poo-trading
+```
+
+Con Docker en ejecución, compila el proyecto e inicia el servicio. La compilación ejecuta las pruebas antes de empaquetar la aplicación.
+
+```bash
+docker compose up -d --build
+```
+
+Cuando Spring Boot termine de arrancar, abre el [panel de trading](http://localhost:8080). Para comprobar que la API responde, consulta la [lista de activos](http://localhost:8080/api/activos).
+
+Si el puerto 8080 está ocupado, crea un archivo `.env` junto al YAML con `TRADING_PORT=8081`, repite el comando de arranque y abre `http://localhost:8081`.
+
+### Recibir cambios del equipo
+
+Una vez publicada la rama, abre tu copia local de `tdd/validacion-cotizaciones`, descarga los cambios y reconstruye el servicio. Estos comandos sirven tanto para la rama clonada como para la copia de Git incluida en el ZIP.
+
+```bash
+git pull --ff-only origin tdd/validacion-cotizaciones
+docker compose up -d --build
+```
+
+Si recibes las actualizaciones por ZIP, descomprime la nueva entrega y ejecuta `docker compose up -d --build` desde su carpeta `poo-trading`.
+
+H2 guarda las cotizaciones y las señales en el volumen `historial`. Al actualizar en el mismo equipo con el mismo contexto de Docker, se conserva ese historial. El simulador vuelve a iniciar los precios y el estado de seguimiento de cada activo.
+
+Para ver el registro de arranque, usa `docker compose logs -f trading`. Para detener el proyecto y conservar el historial, usa `docker compose down`.
+
+## Ejecutar con Java y Maven
 
 - **JDK 17 o superior** instalado y configurado.
 - **Maven** instalado.
@@ -369,7 +409,7 @@ poo-trading/
 
 5. Abre `http://localhost:8080` para ver el panel. Los precios se actualizan cada 3 segundos y las alertas también se imprimen en consola.
 
-### API REST
+## API REST
 
 | Método | Ruta | Descripción |
 | --- | --- | --- |
@@ -377,7 +417,7 @@ poo-trading/
 | GET | `/api/activos/{codigo}/cotizaciones` | Últimas 30 cotizaciones de un activo |
 | GET | `/api/senales` | Últimas 20 señales generadas |
 
-La consola de H2 queda disponible en `/h2-console` (URL JDBC `jdbc:h2:mem:trading`, usuario `sa`).
+Al ejecutar con Maven, la consola de H2 queda disponible en `/h2-console` (URL JDBC `jdbc:h2:mem:trading`, usuario `sa`).
 
 ## Pruebas
 
