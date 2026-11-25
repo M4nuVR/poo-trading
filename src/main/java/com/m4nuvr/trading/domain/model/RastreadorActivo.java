@@ -20,10 +20,14 @@ public class RastreadorActivo {
         this.activo = activo;
     }
 
-    public Optional<SenalInversion> registrarCotizacion(Cotizacion cotizacion, ReglaDeAlerta regla) {
+    public void validarPertenencia(Cotizacion cotizacion) {
         if (!cotizacion.codigo().equals(activo.getCodigo())) {
             throw new IllegalArgumentException("La cotizacion no pertenece a " + activo.getCodigo());
         }
+    }
+
+    public Optional<SenalInversion> registrarCotizacion(Cotizacion cotizacion, ReglaDeAlerta regla) {
+        validarPertenencia(cotizacion);
         double precioActual = cotizacion.precio().valor();
         boolean condicionCumplida = regla.seCumple(List.copyOf(historial), precioActual);
 
