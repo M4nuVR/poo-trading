@@ -41,6 +41,10 @@ public class ServicioMercado {
     public synchronized void actualizarMercado() {
         for (RastreadorActivo rastreador : rastreadores.values()) {
             Cotizacion cotizacion = proveedorPrecios.obtenerCotizacion(rastreador.getActivo());
+            CodigoActivo codigoEsperado = rastreador.getActivo().getCodigo();
+            if (!cotizacion.codigo().equals(codigoEsperado)) {
+                throw new IllegalArgumentException("La cotizacion no pertenece a " + codigoEsperado);
+            }
             repositorioCotizaciones.guardar(cotizacion);
             rastreador.registrarCotizacion(cotizacion, regla).ifPresent(this::emitir);
         }
